@@ -12,9 +12,15 @@
 #include "config.h"
 #include "parson.h"
 
+#include "EventBase.pb.h"
+#include "LightControl.pb.h"
+#include "pb_encode.h"
+#include "pb_decode.h"
+
 #define HC_SR04_TRIG_PIN D1 /* PIN1 */
 #define HC_SR04_ECHO_PIN D0 /* PIN2 */
 #define HC_SR04_INTERVAL_MS 250 /*Stable up to 3m - 3.5 m*/
+#define MESSAGE_MAX_LEN 256
 
 extern Mutex i2c_mutex;
 static bool hasWifi = false;
@@ -24,6 +30,7 @@ int messageCount = 1;
 int sentMessageCount = 0;
 static bool messageSending = true;
 static uint64_t send_interval_ms;
+EventBase event_base;
 
 static void InitWifi();
 void user_led_toggle(void);
@@ -38,6 +45,7 @@ void user_led_toggle(void);
 /************************ SETUP *****************************/
 void setup()
 {
+  event_base.version = 1; //test
   /*HC-SR04 CONFIGURATION*/
   hc_sr04_config_t hc_sr04_config;
   hc_sr04_config.hc_sr04_trig_pin = HC_SR04_TRIG_PIN;
@@ -127,20 +135,30 @@ void loop()
 
   if (hasIoTHub && hasWifi)
   {
-    char buff[128];
-
-    // replace the following line with your data sent to Azure IoTHub
-    snprintf(buff, 128, "{\"topic\":\"iot\"}");
+    uint8_t enc_buf[MESSAGE_MAX_LEN] = {0};
+    
+    event_base.deviceTime = millis();
+    pb_ostream_t ostream = pb_ostream_from_buffer(enc_buf, MESSAGE_MAX_LEN);
     
     i2c_mutex.lock();
-    if (DevKitMQTTClient_SendEvent(buff))
-    {
-      Screen.print(1, "Sending...");
+
+    if(pb_encode(&ostream, &EventBase_msg, &event_base)) {
+      
+      EVENT_INSTANCE* message = DevKitMQTTClient_Event_Generate(enc_buf, MESSAGE);
+      if (DevKitMQTTClient_SendEventInstance(message))
+      {
+        snprintf(line1, 20, "sent %i messages", ++sentMessageCount);
+        Screen.print(1, line1);
+      }
+      else
+      {
+        Screen.print(1, "send fail...");
+      }
     }
-    else
-    {
-      Screen.print(1, "Failure...");
+    else {
+      Screen.print(1, "enc fail...");
     }
+    
     i2c_mutex.unlock();
   }
 
@@ -148,7 +166,7 @@ void loop()
 
   /*Loop timing*/
   user_led_toggle();
-  delay(200);
+  delay(2000);
 }
 
 
@@ -181,13 +199,14 @@ static void InitWifi()
     IPAddress ip = WiFi.localIP();
     Screen.print(1, ip.get_address());
 
-    if (!DevKitMQTTClient_Init())
-    {
+    if (!DevKitMQTTClient_Init()) {
       hasIoTHub = false;
       Screen.print(1, "No HUB");
       return;
     }
-    hasIoTHub = true;
+    else {
+      hasIoTHub = true;
+    }
   }
   else
   {

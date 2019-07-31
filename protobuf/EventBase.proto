@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+option csharp_namespace = "Matricis.IoT.Messages";
+
+message EventBase {
+  string id = 1;
+  string correlationId = 2;
+  int32 deviceTime = 3;
+  string deviceId = 4;
+  int32 version = 5;
+  
+  string commandId = 6;
+  bytes payload = 7;
+}
