@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+option csharp_namespace = "Matricis.IoT.Messages";
+
+message NEO_PROTO {
+  int32 deviceTime = 1;
+  int32 version = 2;
+  float distance = 3;
+  float temperature = 4;
+  float humidity = 5;
+}

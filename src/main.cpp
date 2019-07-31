@@ -14,8 +14,11 @@
 
 #include "EventBase.pb.h"
 #include "LightControl.pb.h"
+#include "NEO_PROTO.pb.h"
 #include "pb_encode.h"
 #include "pb_decode.h"
+
+#define NEO_VERSION 1
 
 #define HC_SR04_TRIG_PIN D1 /* PIN1 */
 #define HC_SR04_ECHO_PIN D0 /* PIN2 */
@@ -30,7 +33,11 @@ int messageCount = 1;
 int sentMessageCount = 0;
 static bool messageSending = true;
 static uint64_t send_interval_ms;
-EventBase event_base;
+NEO_PROTO neo_proto = NEO_PROTO_init_zero;
+
+static float distance = 0.0;
+static float humidity = 0.0;
+static float temperature = 0.0;
 
 static void InitWifi();
 void user_led_toggle(void);
@@ -45,7 +52,7 @@ void user_led_toggle(void);
 /************************ SETUP *****************************/
 void setup()
 {
-  event_base.version = 1; //test
+  neo_proto.version = NEO_VERSION;
   /*HC-SR04 CONFIGURATION*/
   hc_sr04_config_t hc_sr04_config;
   hc_sr04_config.hc_sr04_trig_pin = HC_SR04_TRIG_PIN;
@@ -82,9 +89,6 @@ void loop()
   char line1[20];
   char line2[20];
   char line3[20];
-  float distance = 0.0;
-  float humidity;
-  float temperature;
   hc_sr04_errors_t err = HC_SR04_get_distance(&distance);
 
   /*Verify if telemetry data is available*/
@@ -99,18 +103,12 @@ void loop()
     switch (err) {
       case HC_SR04_TIMEOUT:
         sprintf(line3, "Err : No pulse");
-        digitalWrite(RGB_R, HIGH);
-        digitalWrite(RGB_B, LOW);
         break;
       case HC_SR04_INVALID :
         sprintf(line3, "Err : Invalid pulse");
-        digitalWrite(RGB_R, HIGH);
-        digitalWrite(RGB_B, LOW);
         break;
       case HC_SR04_OVER_RANGE :
         sprintf(line3, "No object");
-        digitalWrite(RGB_R, LOW);
-        digitalWrite(RGB_B, HIGH);
         break;
       default :
         sprintf(line3, "Error");
@@ -119,8 +117,6 @@ void loop()
   } 
   else {
     sprintf(line3, " ");
-    digitalWrite(RGB_R, LOW);
-    digitalWrite(RGB_B, LOW);
   }
 
   /*I2C conflict protection*/
@@ -132,19 +128,24 @@ void loop()
   sprintf(line2, "distance : %i", (uint16_t)distance);
   Serial.println(line2);
 
-
+  /* SEND DATA TO AZURE IOT HUB */
   if (hasIoTHub && hasWifi)
   {
     uint8_t enc_buf[MESSAGE_MAX_LEN] = {0};
     
-    event_base.deviceTime = millis();
+    neo_proto.deviceTime = millis();
+    neo_proto.distance = distance;
+    neo_proto.temperature = temperature;
+    neo_proto.humidity = humidity;
+    /* CREATE OUTPUT STREAM */
     pb_ostream_t ostream = pb_ostream_from_buffer(enc_buf, MESSAGE_MAX_LEN);
     
+    /* LOCK I2C FOR OLED */
     i2c_mutex.lock();
 
-    if(pb_encode(&ostream, &EventBase_msg, &event_base)) {
-      
-      EVENT_INSTANCE* message = DevKitMQTTClient_Event_Generate(enc_buf, MESSAGE);
+    if(pb_encode(&ostream, &NEO_PROTO_msg, &neo_proto)) {
+
+      EVENT_INSTANCE* message = DevKitMQTTClient_Event_Generate((char*)enc_buf, MESSAGE);
       if (DevKitMQTTClient_SendEventInstance(message))
       {
         snprintf(line1, 20, "sent %i messages", ++sentMessageCount);
