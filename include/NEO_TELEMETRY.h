@@ -30,6 +30,6 @@ void telemetry_sensor_init(void);
  * Description : Check if there are telemetry data available 
  * Return : 1 if data available, else 0.
  */
-uint8_t telemetry_get(float* telemetry_temp, float* telemetry_humid);
+uint8_t telemetry_get(float* telemetry_temp, float* telemetry_humid, float* telemetry_pressure);
 
 #endif

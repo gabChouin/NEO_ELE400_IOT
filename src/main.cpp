@@ -7,12 +7,12 @@
 #include "AzureIotHub.h"
 #include "NEO_HC_SR04.h"
 #include "NEO_TELEMETRY.h"
+#include "azure_iot.h"
 
 #include "DevKitMQTTClient.h"
 #include "config.h"
 #include "parson.h"
 
-#include "EventBase.pb.h"
 #include "LightControl.pb.h"
 #include "NEO_PROTO.pb.h"
 #include "pb_encode.h"
@@ -21,23 +21,23 @@
 #define NEO_VERSION 1
 
 #define HC_SR04_TRIG_PIN D1 /* PIN1 */
-#define HC_SR04_ECHO_PIN D0 /* PIN2 */
+#define HC_SR04_ECHO_PIN PB_0 /* PIN2 */
 #define HC_SR04_INTERVAL_MS 250 /*Stable up to 3m - 3.5 m*/
 #define MESSAGE_MAX_LEN 256
 
 extern Mutex i2c_mutex;
 static bool hasWifi = false;
-static bool hasIoTHub = false;
+bool hasIoTHub = false;
+bool doReset=false;
 
-int messageCount = 1;
 int sentMessageCount = 0;
-static bool messageSending = true;
-static uint64_t send_interval_ms;
-NEO_PROTO neo_proto = NEO_PROTO_init_zero;
 
 static float distance = 0.0;
-static float humidity = 0.0;
 static float temperature = 0.0;
+static float humidity = 0.0;
+static float pressure = 0.0;
+
+
 
 static void InitWifi();
 void user_led_toggle(void);
@@ -52,7 +52,6 @@ void user_led_toggle(void);
 /************************ SETUP *****************************/
 void setup()
 {
-  neo_proto.version = NEO_VERSION;
   /*HC-SR04 CONFIGURATION*/
   hc_sr04_config_t hc_sr04_config;
   hc_sr04_config.hc_sr04_trig_pin = HC_SR04_TRIG_PIN;
@@ -63,12 +62,17 @@ void setup()
   Screen.init();
   Screen.print(0, "Team NEO");
   Screen.print(2, "Initializing...");
-
+  
+  Screen.print(3, " > Serial");
+  Serial.begin(115200);
+  
   Screen.print(3, " > WiFi");
   InitWifi();
   
-  Screen.print(3, " > Serial");
-  Serial.begin(250000);
+  if(hasWifi) {
+    Screen.print(3, " > Azure");
+    azure_iot_init();
+  }
   
   Screen.print(3, " > HC_SR04");
   HC_SR04_init(hc_sr04_config);
@@ -92,9 +96,9 @@ void loop()
   hc_sr04_errors_t err = HC_SR04_get_distance(&distance);
 
   /*Verify if telemetry data is available*/
-  if (telemetry_get(&temperature, &humidity)) {
+  if (telemetry_get(&temperature, &humidity, &pressure)) {
     /*Send Telemetry data*/
-    sprintf(line1, "temperature = %i\r\nhumidity = %i%%", (uint16_t)temperature, (uint16_t)humidity);
+    sprintf(line1, "temperature = %i\r\nhumidity = %i%%\r\npressure = %i%%", (uint16_t)temperature, (uint16_t)humidity, (uint16_t)pressure);
     Serial.println(line1);
   }
   
@@ -131,39 +135,20 @@ void loop()
   /* SEND DATA TO AZURE IOT HUB */
   if (hasIoTHub && hasWifi)
   {
-    uint8_t enc_buf[MESSAGE_MAX_LEN] = {0};
-    
-    neo_proto.deviceTime = millis();
-    neo_proto.distance = distance;
-    neo_proto.temperature = temperature;
-    neo_proto.humidity = humidity;
-    /* CREATE OUTPUT STREAM */
-    pb_ostream_t ostream = pb_ostream_from_buffer(enc_buf, MESSAGE_MAX_LEN);
-    
     /* LOCK I2C FOR OLED */
     i2c_mutex.lock();
-
-    if(pb_encode(&ostream, &NEO_PROTO_msg, &neo_proto)) {
-
-      EVENT_INSTANCE* message = DevKitMQTTClient_Event_Generate((char*)enc_buf, MESSAGE);
-      if (DevKitMQTTClient_SendEventInstance(message))
-      {
-        snprintf(line1, 20, "sent %i messages", ++sentMessageCount);
-        Screen.print(1, line1);
-      }
-      else
-      {
-        Screen.print(1, "send fail...");
-      }
+    if (azure_iot_send_data(&distance, &temperature, &humidity, &pressure))
+    {
+      snprintf(line1, 20, "sent %i messages", ++sentMessageCount);
+      Screen.print(1, line1);
     }
-    else {
-      Screen.print(1, "enc fail...");
+    else
+    {
+      Screen.print(1, "send fail...");
     }
-    
+    /* UNLOCK I2C */
     i2c_mutex.unlock();
   }
-
-  
 
   /*Loop timing*/
   user_led_toggle();
@@ -192,6 +177,7 @@ void user_led_toggle(void) {
  */
 static void InitWifi()
 {
+  char wifiBuff[20];
   Screen.print(2, "Connecting...");
   
   if (WiFi.begin() == WL_CONNECTED)
@@ -199,15 +185,6 @@ static void InitWifi()
     hasWifi = true;    
     IPAddress ip = WiFi.localIP();
     Screen.print(1, ip.get_address());
-
-    if (!DevKitMQTTClient_Init()) {
-      hasIoTHub = false;
-      Screen.print(1, "No HUB");
-      return;
-    }
-    else {
-      hasIoTHub = true;
-    }
   }
   else
   {
