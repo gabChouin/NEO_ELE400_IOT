@@ -94,7 +94,9 @@ int device_method_callback(const char *methodName, const unsigned char *payload,
   LogInfo("*** Remote method: %s",methodName);  
 
   if(strcmp(methodName,"GreenLightOn")==0){
+    digitalWrite(RGB_R, LOW);
     digitalWrite(RGB_G, HIGH);
+    digitalWrite(RGB_B, LOW);
 
     const char *ok="{\"result\":\"OK\"}";
     *responseLength=strlen(ok);
@@ -104,6 +106,8 @@ int device_method_callback(const char *methodName, const unsigned char *payload,
   }
 
   if(strcmp(methodName,"YellowLightOn")==0){
+    digitalWrite(RGB_R, LOW);
+    digitalWrite(RGB_G, LOW);
     digitalWrite(RGB_B, HIGH);
     
     const char *reset="{\"result\":\"OK\"}";    
@@ -115,6 +119,8 @@ int device_method_callback(const char *methodName, const unsigned char *payload,
 
   if(strcmp(methodName,"RedLightOn")==0){
     digitalWrite(RGB_R, HIGH);
+    digitalWrite(RGB_G, LOW);
+    digitalWrite(RGB_B, LOW);
     
     const char *reset="{\"result\":\"OK\"}";    
     *responseLength=strlen(reset);

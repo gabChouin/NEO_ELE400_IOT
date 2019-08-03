@@ -123,14 +123,16 @@ void loop()
     sprintf(line3, " ");
   }
 
-  /*I2C conflict protection*/
-  i2c_mutex.lock();
-  Screen.print(3, line3);
-  i2c_mutex.unlock();
-
   /*Send distance info*/
   sprintf(line2, "distance : %i", (uint16_t)distance);
   Serial.println(line2);
+
+  /*I2C conflict protection*/
+  i2c_mutex.lock();
+  Screen.print(3, line3);
+  Screen.print(2, line2);
+  i2c_mutex.unlock();
+
 
   /* SEND DATA TO AZURE IOT HUB */
   if (hasIoTHub && hasWifi)
