@@ -16,20 +16,20 @@ extern "C" {
 
 /* Struct definitions */
 typedef struct _EventBase {
-    pb_callback_t id;
-    pb_callback_t correlationId;
+    char id[40];
+    char correlationId[40];
     int32_t deviceTime;
-    pb_callback_t deviceId;
+    char deviceId[40];
     int32_t version;
-    pb_callback_t commandId;
-    pb_callback_t payload;
+    char commandId[40];
+    pb_byte_t payload[40];
 /* @@protoc_insertion_point(struct:EventBase) */
 } EventBase;
 
 
 /* Initializer values for message structs */
-#define EventBase_init_default                   {{{NULL}, NULL}, {{NULL}, NULL}, 0, {{NULL}, NULL}, 0, {{NULL}, NULL}, {{NULL}, NULL}}
-#define EventBase_init_zero                      {{{NULL}, NULL}, {{NULL}, NULL}, 0, {{NULL}, NULL}, 0, {{NULL}, NULL}, {{NULL}, NULL}}
+#define EventBase_init_default                   {"", "", 0, "", 0, "", {0}}
+#define EventBase_init_zero                      {"", "", 0, "", 0, "", {0}}
 
 /* Field tags (for use in manual encoding/decoding) */
 #define EventBase_id_tag                         1
@@ -42,14 +42,14 @@ typedef struct _EventBase {
 
 /* Struct field encoding specification for nanopb */
 #define EventBase_FIELDLIST(X, a) \
-X(a, CALLBACK, SINGULAR, STRING, id, 1) \
-X(a, CALLBACK, SINGULAR, STRING, correlationId, 2) \
+X(a, STATIC, SINGULAR, STRING, id, 1) \
+X(a, STATIC, SINGULAR, STRING, correlationId, 2) \
 X(a, STATIC, SINGULAR, INT32, deviceTime, 3) \
-X(a, CALLBACK, SINGULAR, STRING, deviceId, 4) \
+X(a, STATIC, SINGULAR, STRING, deviceId, 4) \
 X(a, STATIC, SINGULAR, INT32, version, 5) \
-X(a, CALLBACK, SINGULAR, STRING, commandId, 6) \
-X(a, CALLBACK, SINGULAR, BYTES, payload, 7)
-#define EventBase_CALLBACK pb_default_field_callback
+X(a, STATIC, SINGULAR, STRING, commandId, 6) \
+X(a, STATIC, SINGULAR, FIXED_LENGTH_BYTES, payload, 7)
+#define EventBase_CALLBACK NULL
 #define EventBase_DEFAULT NULL
 
 extern const pb_msgdesc_t EventBase_msg;
@@ -58,7 +58,7 @@ extern const pb_msgdesc_t EventBase_msg;
 #define EventBase_fields &EventBase_msg
 
 /* Maximum encoded size of messages (where known) */
-/* EventBase_size depends on runtime parameters */
+#define EventBase_size                           228
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -33,6 +33,7 @@ int messageCount = 1;
 int sentMessageCount = 0;
 static bool messageSending = true;
 static uint64_t send_interval_ms;
+EventBase event_base = EventBase_init_zero;
 NEO_PROTO neo_proto = NEO_PROTO_init_zero;
 
 static float distance = 0.0;
@@ -52,6 +53,7 @@ void user_led_toggle(void);
 /************************ SETUP *****************************/
 void setup()
 {
+  event_base.version = NEO_VERSION;
   neo_proto.version = NEO_VERSION;
   /*HC-SR04 CONFIGURATION*/
   hc_sr04_config_t hc_sr04_config;
@@ -86,6 +88,7 @@ void setup()
 /************************* LOOP *****************************/
 void loop()
 {
+  bool encode_success;
   char line1[20];
   char line2[20];
   char line3[20];
@@ -131,6 +134,7 @@ void loop()
   /* SEND DATA TO AZURE IOT HUB */
   if (hasIoTHub && hasWifi)
   {
+    uint8_t custom_buf[40] = {0};
     uint8_t enc_buf[MESSAGE_MAX_LEN] = {0};
     
     neo_proto.deviceTime = millis();
@@ -138,13 +142,18 @@ void loop()
     neo_proto.temperature = temperature;
     neo_proto.humidity = humidity;
     /* CREATE OUTPUT STREAM */
-    pb_ostream_t ostream = pb_ostream_from_buffer(enc_buf, MESSAGE_MAX_LEN);
+    pb_ostream_t ostream = pb_ostream_from_buffer(custom_buf, 40);
+    pb_ostream_t ostream_event_base = pb_ostream_from_buffer(enc_buf, 256);
     
     /* LOCK I2C FOR OLED */
     i2c_mutex.lock();
 
     if(pb_encode(&ostream, &NEO_PROTO_msg, &neo_proto)) {
+      snprintf((char *)event_base.payload, 40, "%s,", custom_buf);
+      encode_success = pb_encode(&ostream_event_base, &EventBase_msg, &event_base);
+    }
 
+    if(encode_success){
       EVENT_INSTANCE* message = DevKitMQTTClient_Event_Generate((char*)enc_buf, MESSAGE);
       if (DevKitMQTTClient_SendEventInstance(message))
       {
