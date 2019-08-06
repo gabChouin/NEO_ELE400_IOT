@@ -13,16 +13,10 @@
 #include "config.h"
 #include "parson.h"
 
-#include "LightControl.pb.h"
-#include "NEO_PROTO.pb.h"
-#include "pb_encode.h"
-#include "pb_decode.h"
-
 #define NEO_VERSION 1
 
 #define HC_SR04_TRIG_PIN D1 /* PIN1 */
 #define HC_SR04_ECHO_PIN PB_0 /* PIN2 */
-#define HC_SR04_INTERVAL_MS 250 /*Stable up to 3m - 3.5 m*/
 #define MESSAGE_MAX_LEN 256
 
 extern Mutex i2c_mutex;
@@ -30,14 +24,14 @@ static bool hasWifi = false;
 bool hasIoTHub = false;
 bool doReset=false;
 
-int sentMessageCount = 0;
+static int sentMessageCount = 0;
+int loop_interval_ms = 1000;
+Timer main_tim;
 
 static float distance = 0.0;
 static float temperature = 0.0;
 static float humidity = 0.0;
 static float pressure = 0.0;
-
-
 
 static void InitWifi();
 void user_led_toggle(void);
@@ -52,11 +46,11 @@ void user_led_toggle(void);
 /************************ SETUP *****************************/
 void setup()
 {
+
   /*HC-SR04 CONFIGURATION*/
   hc_sr04_config_t hc_sr04_config;
   hc_sr04_config.hc_sr04_trig_pin = HC_SR04_TRIG_PIN;
   hc_sr04_config.hc_sr04_echo_pin = HC_SR04_ECHO_PIN;
-  hc_sr04_config.hc_sr04_interval_ms = HC_SR04_INTERVAL_MS;
 
   /*INITIALIZE PERIPHERALS AND THREADS*/
   Screen.init();
@@ -66,12 +60,31 @@ void setup()
   Screen.print(3, " > Serial");
   Serial.begin(115200);
   
+  digitalWrite(RGB_R, LOW);
+  digitalWrite(RGB_G, HIGH);
+  digitalWrite(RGB_B, LOW);
+  
   Screen.print(3, " > WiFi");
   InitWifi();
-  
+
   if(hasWifi) {
+    digitalWrite(RGB_R, HIGH);
+    digitalWrite(RGB_G, HIGH);
+    digitalWrite(RGB_B, LOW);
     Screen.print(3, " > Azure");
     azure_iot_init();
+  }
+
+  
+  if (hasIoTHub && hasWifi) {
+    digitalWrite(RGB_R, HIGH);
+    digitalWrite(RGB_G, LOW);
+    digitalWrite(RGB_B, HIGH);
+  }
+  else {
+    digitalWrite(RGB_R, LOW);
+    digitalWrite(RGB_G, HIGH);
+    digitalWrite(RGB_B, HIGH);
   }
   
   Screen.print(3, " > HC_SR04");
@@ -85,22 +98,23 @@ void setup()
   Screen.print(2, "Running");
   Screen.print(3, "");
   i2c_mutex.unlock();
+  
+  main_tim.start();
 }
 
 /************************* LOOP *****************************/
 void loop()
 {
+  main_tim.reset();
+  char serial_buf[64];
   char line1[20];
   char line2[20];
   char line3[20];
   hc_sr04_errors_t err = HC_SR04_get_distance(&distance);
 
-  /*Verify if telemetry data is available*/
-  if (telemetry_get(&temperature, &humidity, &pressure)) {
-    /*Send Telemetry data*/
-    sprintf(line1, "temperature = %i\r\nhumidity = %i%%\r\npressure = %i%%", (uint16_t)temperature, (uint16_t)humidity, (uint16_t)pressure);
-    Serial.println(line1);
-  }
+  /*Send distance info*/
+  sprintf(line2, "distance : %i", (uint16_t)distance);
+  Serial.println(line2);
   
   /*HC-SR04 sensor error management*/
   if (err < 0 ) {
@@ -123,9 +137,12 @@ void loop()
     sprintf(line3, " ");
   }
 
-  /*Send distance info*/
-  sprintf(line2, "distance : %i", (uint16_t)distance);
-  Serial.println(line2);
+  /*Verify if telemetry data is available*/
+  if (telemetry_get(&temperature, &humidity, &pressure)) {
+    /*Send Telemetry data*/
+    sprintf(serial_buf, "temperature = %i\r\nhumidity = %i%%\r\npressure = %i%%", (uint16_t)temperature, (uint16_t)humidity, (uint16_t)pressure);
+    Serial.println(serial_buf);
+  }
 
   /*I2C conflict protection*/
   i2c_mutex.lock();
@@ -154,7 +171,7 @@ void loop()
 
   /*Loop timing*/
   user_led_toggle();
-  delay(2000);
+  while (main_tim.read_ms() < loop_interval_ms);
 }
 
 

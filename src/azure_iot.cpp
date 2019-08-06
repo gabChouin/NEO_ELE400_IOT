@@ -12,7 +12,7 @@
 /* Device info */
 const char *roomSchema = "neo-sensors"; 
 const char *deviceType = "AZ3166-NEO";
-const char *deviceFirmware = "1.0.0";
+const char *deviceFirmware = "1.0.1";
 /* Units */
 const char *distanceUnit = "cm";
 const char *temperatureUnit = "C";
@@ -30,6 +30,7 @@ const char *twinProperties="{\"Protocol\": \"MQTT\", \"SupportedMethods\": \"Gre
 /************** PRIVATE GLOBAL VARIABLES ********************/
 extern bool doReset;
 extern bool hasIoTHub;
+extern int loop_interval_ms;
 
 /************ PRIVATE FUNCTIONS DECLARATION *****************/
 void twinCallback(DEVICE_TWIN_UPDATE_STATE updateState, const unsigned char *payLoad, int length);
@@ -90,13 +91,17 @@ void twinCallback(DEVICE_TWIN_UPDATE_STATE updateState, const unsigned char *pay
 }
 
 int device_method_callback(const char *methodName, const unsigned char *payload, int length, unsigned char **response, int *responseLength){
-
+  String payload_str = (char *)payload;
   LogInfo("*** Remote method: %s",methodName);  
 
   if(strcmp(methodName,"GreenLightOn")==0){
-    digitalWrite(RGB_R, LOW);
-    digitalWrite(RGB_G, HIGH);
-    digitalWrite(RGB_B, LOW);
+    digitalWrite(RGB_R, HIGH);
+    digitalWrite(RGB_G, LOW);
+    digitalWrite(RGB_B, HIGH);
+    if(payload_str.indexOf("interval")){
+      String interval_str = payload_str.substring(payload_str.indexOf(":") + 1, payload_str.indexOf("}"));
+      loop_interval_ms = interval_str.toInt();
+    }
 
     const char *ok="{\"result\":\"OK\"}";
     *responseLength=strlen(ok);
@@ -106,9 +111,13 @@ int device_method_callback(const char *methodName, const unsigned char *payload,
   }
 
   if(strcmp(methodName,"YellowLightOn")==0){
-    digitalWrite(RGB_R, LOW);
-    digitalWrite(RGB_G, LOW);
-    digitalWrite(RGB_B, HIGH);
+    digitalWrite(RGB_R, HIGH);
+    digitalWrite(RGB_G, HIGH);
+    digitalWrite(RGB_B, LOW);
+    if(payload_str.indexOf("interval")){
+      String interval_str = payload_str.substring(payload_str.indexOf(":") + 1, payload_str.indexOf("}"));
+      loop_interval_ms = interval_str.toInt();
+    }
     
     const char *reset="{\"result\":\"OK\"}";    
     *responseLength=strlen(reset);
@@ -118,9 +127,13 @@ int device_method_callback(const char *methodName, const unsigned char *payload,
   }
 
   if(strcmp(methodName,"RedLightOn")==0){
-    digitalWrite(RGB_R, HIGH);
-    digitalWrite(RGB_G, LOW);
-    digitalWrite(RGB_B, LOW);
+    digitalWrite(RGB_R, LOW);
+    digitalWrite(RGB_G, HIGH);
+    digitalWrite(RGB_B, HIGH);
+    if(payload_str.indexOf("interval")){
+      String interval_str = payload_str.substring(payload_str.indexOf(":") + 1, payload_str.indexOf("}"));
+      loop_interval_ms = interval_str.toInt();
+    }
     
     const char *reset="{\"result\":\"OK\"}";    
     *responseLength=strlen(reset);

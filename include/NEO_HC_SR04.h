@@ -19,7 +19,6 @@
 typedef struct {
     uint8_t hc_sr04_trig_pin;
     uint8_t hc_sr04_echo_pin;
-    float hc_sr04_interval_ms;
 } hc_sr04_config_t;
 
 typedef enum {

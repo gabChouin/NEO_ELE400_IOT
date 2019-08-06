@@ -23,8 +23,6 @@
 /************** PRIVATE GLOBAL VARIABLES ********************/
 hc_sr04_config_t config;
 float distance = 0.0;
-hc_sr04_errors_t err;
-Thread sensor_thread;
 
 
 /************ PRIVATE FUNCTIONS DECLARATION *****************/
@@ -34,23 +32,10 @@ hc_sr04_errors_t get_echo(void);
 /************* PUBLIC FUNCTIONS DEFINITION ******************/
 void HC_SR04_init(hc_sr04_config_t hc_sr04_config) {
   config = hc_sr04_config;
-  // Create a thread to execute the function HC_SR04_thread
-  sensor_thread.start(HC_SR04_thread);
-}
-
-void HC_SR04_thread(void) {
-  Timer tim;
-  tim.start();
-
-  while(1) {
-    tim.reset();
-    err = get_echo();
-    /*Wait for time interval to end*/
-    while (tim.read_ms() < config.hc_sr04_interval_ms);
-  }
 }
 
 hc_sr04_errors_t HC_SR04_get_distance(float *hc_sr04_distance) {
+  hc_sr04_errors_t err = get_echo();
   *hc_sr04_distance = distance;
   return err;
 }

@@ -1,7 +1,0 @@
-syntax = "proto3";
-
-option csharp_namespace = "Matricis.IoT.Messages";
-
-message LightControl {
-  int32 control = 1;
-}
