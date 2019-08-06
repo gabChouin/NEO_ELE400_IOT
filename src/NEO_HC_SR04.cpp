@@ -42,6 +42,11 @@ hc_sr04_errors_t HC_SR04_get_distance(float *hc_sr04_distance) {
 
 /************* PRIVATE FUNCTIONS DEFINITION *****************/
 
+/* get_echo
+ * 
+ * Description : Get distance data from sensors
+ * Return : Error code
+ */
 hc_sr04_errors_t get_echo(void) {
   Timer t;
 
@@ -76,6 +81,11 @@ hc_sr04_errors_t get_echo(void) {
   return HC_SR04_NO_ERR;
 }
 
+/* send_trig
+ * 
+ * Description : Send 10us pulse to sensors
+ * Return : None.
+ */
 void send_trig(void) {
   digitalWrite(config.hc_sr04_trig_pin, LOW);
   delayMicroseconds(3); /* 10us verified with oscilloscope */

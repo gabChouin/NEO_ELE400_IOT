@@ -86,10 +86,20 @@ bool azure_iot_send_device_info()
 
 /************* PRIVATE FUNCTIONS DEFINITION *****************/
 
+/* twinCallback
+ * 
+ * Description : Callback function for twin state
+ * Return : None.
+ */
 void twinCallback(DEVICE_TWIN_UPDATE_STATE updateState, const unsigned char *payLoad, int length){
   LogInfo("*** Twin State: %s",updateState?"Complete":"Partial");
 }
 
+/* device_method_callback
+ * 
+ * Description : Callback function for methods
+ * Return : success code.
+ */
 int device_method_callback(const char *methodName, const unsigned char *payload, int length, unsigned char **response, int *responseLength){
   String payload_str = (char *)payload;
   LogInfo("*** Remote method: %s",methodName);  

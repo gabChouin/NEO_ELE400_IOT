@@ -2,6 +2,7 @@
 // Licensed under the MIT license. 
 // To get started please visit https://microsoft.github.io/azure-iot-developer-kit/docs/projects/connect-iot-hub?utm_source=ArduinoExtension&utm_medium=ReleaseNote&utm_campaign=VSCode
 
+/*********************** INCLUDES ***************************/
 #include "Arduino.h"
 #include "AZ3166WiFi.h"
 #include "AzureIotHub.h"
@@ -13,35 +14,28 @@
 #include "config.h"
 #include "parson.h"
 
-#define NEO_VERSION 1
-
+/********************** CONSTANTS ***************************/
 #define HC_SR04_TRIG_PIN D1 /* PIN1 */
 #define HC_SR04_ECHO_PIN PB_0 /* PIN2 */
-#define MESSAGE_MAX_LEN 256
 
 extern Mutex i2c_mutex;
 static bool hasWifi = false;
 bool hasIoTHub = false;
 bool doReset=false;
-
 static int sentMessageCount = 0;
 int loop_interval_ms = 1000;
 Timer main_tim;
 
+/************** PRIVATE GLOBAL VARIABLES ********************/
+/* Telemetry */
 static float distance = 0.0;
 static float temperature = 0.0;
 static float humidity = 0.0;
 static float pressure = 0.0;
 
+/************ PRIVATE FUNCTIONS DECLARATION *****************/
 static void InitWifi();
 void user_led_toggle(void);
-
-/************************* TODO *****************************/
-/* Integrate protobuf
- * Integrate wifi/azure (Send and receive)
- * Integrate light control
- * Integrate state control (change loop timing + light)
- */
 
 /************************ SETUP *****************************/
 void setup()
@@ -60,6 +54,7 @@ void setup()
   Screen.print(3, " > Serial");
   Serial.begin(115200);
   
+  /* Open Red and Yellow light */
   digitalWrite(RGB_R, LOW);
   digitalWrite(RGB_G, HIGH);
   digitalWrite(RGB_B, LOW);
@@ -68,6 +63,7 @@ void setup()
   InitWifi();
 
   if(hasWifi) {
+    /* Open Yellow light */
     digitalWrite(RGB_R, HIGH);
     digitalWrite(RGB_G, HIGH);
     digitalWrite(RGB_B, LOW);
@@ -77,11 +73,13 @@ void setup()
 
   
   if (hasIoTHub && hasWifi) {
+    /* Open Green Light */
     digitalWrite(RGB_R, HIGH);
     digitalWrite(RGB_G, LOW);
     digitalWrite(RGB_B, HIGH);
   }
   else {
+    /* Open Red light */
     digitalWrite(RGB_R, LOW);
     digitalWrite(RGB_G, HIGH);
     digitalWrite(RGB_B, HIGH);

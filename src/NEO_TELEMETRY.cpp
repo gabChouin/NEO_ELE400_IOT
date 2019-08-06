@@ -62,6 +62,12 @@ uint8_t telemetry_get(float* telemetry_temp, float* telemetry_humid, float* tele
 }
 
 /************* PRIVATE FUNCTIONS DEFINITION *****************/
+
+/* get_telemetry_thread
+ * 
+ * Description : Thread to aquire device sensor data
+ * Return : None.
+ */
 void get_telemetry_thread(void) {
   while(1) {
     /*PROTECT I2C BUS FROM OLED SCREEN*/

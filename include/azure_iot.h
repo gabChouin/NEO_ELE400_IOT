@@ -10,8 +10,26 @@
 /************************ DEFINES ***************************/
 
 /************* PUBLIC FUNCTIONS DECLARATION *****************/
+
+/* azure_iot_init
+ * 
+ * Description : Initialization function for azure
+ * Return : None.
+ */
 void azure_iot_init();
+
+/* azure_iot_send_data
+ * 
+ * Description : Send device telemetry data
+ * Return : Success status.
+ */
 bool azure_iot_send_data(float *azure_iot_distance, float *azure_iot_temperature, float *azure_iot_humidity, float *azure_iot_pressure);
+
+/* azure_iot_send_device_info
+ * 
+ * Description : Send device informations
+ * Return : Success status.
+ */
 bool azure_iot_send_device_info();
 
 #endif
